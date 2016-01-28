@@ -13,7 +13,7 @@ FXAS21002C sensor2 = FXAS21002C(0x20); // SA0=1 0x21
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(9600);
-  Wire.begin();
+  Wire1.begin();
   
   // Initialize the FXOS8700CQ
   sensor.init();

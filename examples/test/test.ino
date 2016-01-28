@@ -5,7 +5,7 @@ FXAS21002C sensor = FXAS21002C(0x20); // SA0=1 0x21
 
 void setup() {
   Serial.begin(9600);
-  Wire.begin();
+  Wire1.begin();
   
   // Initialize the FXAS21002C
   sensor.init();

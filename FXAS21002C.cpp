@@ -1,3 +1,11 @@
+/*
+ * derived from: https://github.com/sabas1080/FXAS21002C_Arduino_Library
+ *
+ * modified by Francesco Ferraro 01/2016
+ * francesco.ferrarogm@gmail.com
+ *
+*/
+
 #include <Wire.h>
 #include <math.h>
 
@@ -15,10 +23,10 @@ FXAS21002C::FXAS21002C(byte addr)
 
 void FXAS21002C::writeReg(byte reg, byte value)
 {
-	Wire.beginTransmission(address);
-	Wire.write(reg);
-	Wire.write(value);
-	Wire.endTransmission();
+	Wire1.beginTransmission(address);
+	Wire1.write(reg);
+	Wire1.write(value);
+	Wire1.endTransmission();
 }
 
 // Reads a register
@@ -26,12 +34,12 @@ byte FXAS21002C::readReg(byte reg)
 {
 	byte value;
 
-	Wire.beginTransmission(address);
-	Wire.write(reg);
-	Wire.endTransmission();
-	Wire.requestFrom(address, (uint8_t)1);
-	value = Wire.read();
-	Wire.endTransmission();
+	Wire1.beginTransmission(address);
+	Wire1.write(reg);
+	Wire1.endTransmission();
+	Wire1.requestFrom(address, (uint8_t)1);
+	value = Wire1.read();
+	Wire1.endTransmission();
 
 	return value;
 }
@@ -40,13 +48,13 @@ void FXAS21002C::readRegs(byte reg, uint8_t count, byte dest[])
 {
 	uint8_t i = 0;
 
-	Wire.beginTransmission(address);   // Initialize the Tx buffer
-	Wire.write(reg);            	   // Put slave register address in Tx buffer
-	Wire.endTransmission(false);       // Send the Tx buffer, but send a restart to keep connection alive
-	Wire.requestFrom(address, count);  // Read bytes from slave register address 
+	Wire1.beginTransmission(address);   // Initialize the Tx buffer
+	Wire1.write(reg);            	   // Put slave register address in Tx buffer
+	Wire1.endTransmission(false);       // Send the Tx buffer, but send a restart to keep connection alive
+	Wire1.requestFrom(address, count);  // Read bytes from slave register address
 
-	while (Wire.available()) {
-		dest[i++] = Wire.read();   // Put read results in the Rx buffer
+	while (Wire1.available()) {
+		dest[i++] = Wire1.read();   // Put read results in the Rx buffer
 	}
 }
 
@@ -114,9 +122,9 @@ void FXAS21002C::readGyroData()
 {
 	uint8_t rawData[6];  // x/y/z gyro register data stored here
 	readRegs(FXAS21002C_H_OUT_X_MSB, 6, &rawData[0]);  // Read the six raw data registers into data array
-	gyroData.x = ((int16_t) rawData[0] << 8 | rawData[1]) >> 2;
-	gyroData.y = ((int16_t) rawData[2] << 8 | rawData[3]) >> 2;
-	gyroData.z = ((int16_t) rawData[4] << 8 | rawData[5]) >> 2;
+	gyroData.x = ((int16_t)( rawData[0] << 8 | rawData[1])) >> 2;
+	gyroData.y = ((int16_t)( rawData[2] << 8 | rawData[3])) >> 2;
+	gyroData.z = ((int16_t)( rawData[4] << 8 | rawData[5])) >> 2;
 }
 
 // Get accelerometer resolution
@@ -163,9 +171,9 @@ void FXAS21002C::calibrate(float * gBias)
   for(ii = 0; ii < fcount; ii++)   // construct count sums for each axis
   {
   readRegs(FXAS21002C_H_OUT_X_MSB, 6, &rawData[0]);  // Read the FIFO data registers into data array
-  temp[0] = ((int16_t) rawData[0] << 8 | rawData[1]) >> 2;
-  temp[1] = ((int16_t) rawData[2] << 8 | rawData[3]) >> 2;
-  temp[2] = ((int16_t) rawData[4] << 8 | rawData[5]) >> 2;
+  temp[0] = ((int16_t)( rawData[0] << 8 | rawData[1])) >> 2;
+  temp[1] = ((int16_t)( rawData[2] << 8 | rawData[3])) >> 2;
+  temp[2] = ((int16_t)( rawData[4] << 8 | rawData[5])) >> 2;
   
   gyro_bias[0] += (int32_t) temp[0];
   gyro_bias[1] += (int32_t) temp[1];
