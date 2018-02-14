@@ -155,6 +155,7 @@ float FXAS21002C::getGres(void)
 
 void FXAS21002C::calibrate(float * gBias)
 {
+  Serial.println ("Calibrating Gyroscope...");
   int32_t gyro_bias[3] = {0, 0, 0};
   uint16_t ii, fcount;
   int16_t temp[3];
@@ -162,42 +163,52 @@ void FXAS21002C::calibrate(float * gBias)
   // Clear all interrupts by reading the data output and STATUS registers
   //readGyroData(temp);
   readReg(FXAS21002C_H_STATUS);
+
+  //init ();
   
   standby();  // Must be in standby to change registers
 
   writeReg(FXAS21002C_H_CTRL_REG1, 0x08);   // select 50 Hz ODR
   fcount = 50;                                     // sample for 1 second
   writeReg(FXAS21002C_H_CTRL_REG0, 0x03);   // select 200 deg/s full scale
-  uint16_t gyrosensitivity = 16384.0/250.0;                   // 40.96 LSB/deg/s
+  float gyrosensitivity = 32000.0/250.0; //GFS_250DPS;
 
   active();  // Set to active to start collecting data
    
   uint8_t rawData[6];  // x/y/z FIFO accel data stored here
   for(ii = 0; ii < fcount; ii++)   // construct count sums for each axis
   {
-  readRegs(FXAS21002C_H_OUT_X_MSB, 6, &rawData[0]);  // Read the FIFO data registers into data array
-  temp[0] = ((int16_t)( ((int16_t) rawData[0]) << 8 | ((int16_t) rawData[1])));
-  temp[1] = ((int16_t)( ((int16_t) rawData[2]) << 8 | ((int16_t) rawData[3])));
-  temp[2] = ((int16_t)( ((int16_t) rawData[4]) << 8 | ((int16_t) rawData[5])));
+	 readRegs(FXAS21002C_H_OUT_X_MSB, 6, &rawData[0]);  // Read the FIFO data registers into data array
+ 	 temp[0] = ((int16_t)( ((int16_t) rawData[0]) << 8 | ((int16_t) rawData[1])));
+ 	 temp[1] = ((int16_t)( ((int16_t) rawData[2]) << 8 | ((int16_t) rawData[3])));
+ 	 temp[2] = ((int16_t)( ((int16_t) rawData[4]) << 8 | ((int16_t) rawData[5])));
 
- // temp[0] = ((int16_t)( rawData[0] << 8 | rawData[1])) >> 2;
- // temp[1] = ((int16_t)( rawData[2] << 8 | rawData[3])) >> 2;
- // temp[2] = ((int16_t)( rawData[4] << 8 | rawData[5])) >> 2;
-  
-  gyro_bias[0] += (int32_t) temp[0];
-  gyro_bias[1] += (int32_t) temp[1];
-  gyro_bias[2] += (int32_t) temp[2];
-  
-  delay(25); // wait for next data sample at 50 Hz rate
+ 	// temp[0] = ((int16_t)( rawData[0] << 8 | rawData[1])) >> 2;
+ 	// temp[1] = ((int16_t)( rawData[2] << 8 | rawData[3])) >> 2;
+ 	// temp[2] = ((int16_t)( rawData[4] << 8 | rawData[5])) >> 2;
+ 	 
+ 	 gyro_bias[0] += (int32_t) temp[0];
+ 	 gyro_bias[1] += (int32_t) temp[1];
+ 	 gyro_bias[2] += (int32_t) temp[2];
+ 	 
+ 	 delay(25); // wait for next data sample at 50 Hz rate
   }
  
   gyro_bias[0] /= (int32_t) fcount; // get average values
   gyro_bias[1] /= (int32_t) fcount;
   gyro_bias[2] /= (int32_t) fcount;
   
-  gBias[0] = (float)gyro_bias[0]/(float) gyrosensitivity; // get average values
-  gBias[1] = (float)gyro_bias[1]/(float) gyrosensitivity; // get average values
-  gBias[2] = (float)gyro_bias[2]/(float) gyrosensitivity; // get average values
+  gBias[0] = (float)gyro_bias[0]/gyrosensitivity; // get average values
+  gBias[1] = (float)gyro_bias[1]/gyrosensitivity; // get average values
+  gBias[2] = (float)gyro_bias[2]/gyrosensitivity; // get average values
+
+  Serial.print ("gyro bias:");
+  Serial.print (gBias[0]);
+  Serial.print (",");
+  Serial.print (gBias[1]);
+  Serial.print (",");
+  Serial.println (gBias[2]);
+
 
   ready();  // Set to ready
 }
