@@ -50,7 +50,7 @@ enum GyroODR {
 	GODR_1_56HZ
 };
 // Set initial input parameters
-enum gyroFSR {
+enum eGyroFSR {
   GFS_2000DPS = 0,
   GFS_1000DPS,
   GFS_500DPS,

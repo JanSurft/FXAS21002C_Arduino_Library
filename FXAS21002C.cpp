@@ -18,7 +18,7 @@ FXAS21002C::FXAS21002C(byte addr)
 {
 	address = addr;
 	gyroODR = GODR_200HZ; // In hybrid mode, accel/mag data sample rates are half of this value
-	gyroFSR = GFS_250DPS;
+	gyroFSR = GFS_500DPS;
 }
 
 void FXAS21002C::writeReg(byte reg, byte value)
@@ -94,7 +94,8 @@ void FXAS21002C::init()
 	standby();  // Must be in standby to change registers
 
 	// Set up the full scale range to 250, 500, 1000, or 2000 deg/s.
-	writeReg(FXAS21002C_H_CTRL_REG0, 0); 
+	gyroFSR = GFS_500DPS;
+	writeReg(FXAS21002C_H_CTRL_REG0, GFS_500DPS); 
 	 // Setup the 3 data rate bits, 4:2
 	if (gyroODR < 8) 
 		writeReg(FXAS21002C_H_CTRL_REG1, gyroODR << 2);
@@ -105,8 +106,11 @@ void FXAS21002C::init()
 
   	 // Set up rate threshold detection; at max rate threshold = FSR; rate threshold = THS*FSR/128
   	writeReg(FXAS21002C_H_RT_CFG, 0x07);         // enable rate threshold detection on all axes
-  	writeReg(FXAS21002C_H_RT_THS, 0x00 | 0x0D);  // unsigned 7-bit THS, set to one-tenth FSR; set clearing debounce counter
-  	writeReg(FXAS21002C_H_RT_COUNT, 0x04);       // set to 4 (can set up to 255)         
+ 	writeReg(FXAS21002C_H_RT_THS, 0x00 | 0x0D);  // unsigned 7-bit THS, set to one-tenth FSR; set clearing debounce counter
+	writeReg(FXAS21002C_H_RT_COUNT, 0x04);       // set to 4 (can set up to 255)
+	writeReg(FXAS21002C_H_CTRL_REG3, 0x00);
+	//Serial.println (readReg (FXAS21002C_H_CTRL_REG3));
+	//Serial.println (readReg (FXAS21002C_H_RT_COUNT));
 	// Configure interrupts 1 and 2
 	//writeReg(CTRL_REG3, readReg(CTRL_REG3) & ~(0x02)); // clear bits 0, 1 
 	//writeReg(CTRL_REG3, readReg(CTRL_REG3) |  (0x02)); // select ACTIVE HIGH, push-pull interrupts    
@@ -122,6 +126,7 @@ void FXAS21002C::readGyroData()
 {
 	uint8_t rawData[6];  // x/y/z gyro register data stored here
 	readRegs(FXAS21002C_H_OUT_X_MSB, 6, &rawData[0]);  // Read the six raw data registers into data array
+	
 	gyroData.x = ((int16_t)( ((int16_t) rawData[0]) << 8 | ((int16_t) rawData[1])));
 	gyroData.y = ((int16_t)( ((int16_t) rawData[2]) << 8 | ((int16_t) rawData[3])));
 	gyroData.z = ((int16_t)( ((int16_t) rawData[4]) << 8 | ((int16_t) rawData[5])));
@@ -135,16 +140,16 @@ float FXAS21002C::getGres(void)
 	// Possible gyro scales (and their register bit settings) are:
 	// 250 DPS (11), 500 DPS (10), 1000 DPS (01), and 2000 DPS  (00). 
     case GFS_2000DPS:
-		return 2000.0/16384.0;
+		return 0.0625; //2000.0/32768.0;
     
 	case GFS_1000DPS:
-        return 1000.0/16384.0;
+        return 0.03125; //1000.0/32768.0;
     
 	case GFS_500DPS:
-        return 500.0/16384.0;
+        return 0.015625;
     
 	case GFS_250DPS:
-        return 250.0/16384.0;
+        return 0.0078125; //250.0/32768.0;
 	}
 }
 
