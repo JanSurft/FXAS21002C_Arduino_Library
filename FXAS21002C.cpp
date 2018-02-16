@@ -36,8 +36,9 @@ byte FXAS21002C::readReg(byte reg)
 
 	Wire1.beginTransmission(address);
 	Wire1.write(reg);
-	Wire1.endTransmission();
-	Wire1.requestFrom(address, (uint8_t)1);
+	Wire1.endTransmission(false);
+
+	Wire1.requestFrom(address, (uint8_t)1, (uint8_t) true);
 	value = Wire1.read();
 	Wire1.endTransmission();
 
@@ -56,6 +57,7 @@ void FXAS21002C::readRegs(byte reg, uint8_t count, byte dest[])
 	while (Wire1.available()) {
 		dest[i++] = Wire1.read();   // Put read results in the Rx buffer
 	}
+	Wire1.endTransmission ();
 }
 
 // Read the temperature data
@@ -95,10 +97,10 @@ void FXAS21002C::init()
 
 	// Set up the full scale range to 250, 500, 1000, or 2000 deg/s.
 	gyroFSR = GFS_500DPS;
-	writeReg(FXAS21002C_H_CTRL_REG0, GFS_500DPS); 
+	//writeReg (FXAS21002C_H_CTRL_REG0, GFS_500DPS); 
 	 // Setup the 3 data rate bits, 4:2
-	if (gyroODR < 8) 
-		writeReg(FXAS21002C_H_CTRL_REG1, gyroODR << 2);
+	//if (gyroODR < 8) 
+	//	writeReg(FXAS21002C_H_CTRL_REG1, gyroODR << 2);
 
 	// Disable FIFO, route FIFO and rate threshold interrupts to INT2, enable data ready interrupt, route to INT1
   	// Active HIGH, push-pull output driver on interrupts
@@ -109,6 +111,7 @@ void FXAS21002C::init()
  	writeReg(FXAS21002C_H_RT_THS, 0x00 | 0x0D);  // unsigned 7-bit THS, set to one-tenth FSR; set clearing debounce counter
 	writeReg(FXAS21002C_H_RT_COUNT, 0x04);       // set to 4 (can set up to 255)
 	writeReg(FXAS21002C_H_CTRL_REG3, 0x00);
+
 	//Serial.println (readReg (FXAS21002C_H_CTRL_REG3));
 	//Serial.println (readReg (FXAS21002C_H_RT_COUNT));
 	// Configure interrupts 1 and 2
@@ -118,7 +121,7 @@ void FXAS21002C::init()
 	//writeReg(CTRL_REG4, readReg(CTRL_REG4) |  (0x1D)); // DRDY, Freefall/Motion, P/L and tap ints enabled  
 	//writeReg(CTRL_REG5, 0x01);  // DRDY on INT1, P/L and taps on INT2
 
-	active();  // Set to active to start reading
+	//active();  // Set to active to start reading
 }
 
 // Read the gyroscope data
@@ -131,6 +134,110 @@ void FXAS21002C::readGyroData()
 	gyroData.y = ((int16_t)( ((int16_t) rawData[2]) << 8 | ((int16_t) rawData[3])));
 	gyroData.z = ((int16_t)( ((int16_t) rawData[4]) << 8 | ((int16_t) rawData[5])));
 }
+
+int FXAS21002C::setRateODR (GyroODR odr)
+{
+	standby ();
+	if (odr < 7) {
+		writeReg (FXAS21002C_H_CTRL_REG1, (readReg (FXAS21002C_H_CTRL_REG1) & 0xE3) | odr << 2);
+	}
+}
+
+int FXAS21002C::setLowPassLPF (GyroLPF lpf)
+{
+	standby ();
+	byte write = (readReg (FXAS21002C_H_CTRL_REG0) & 0x3f) | lpf << 6;
+	Serial.println (write, HEX);
+	writeReg (FXAS21002C_H_CTRL_REG0, (readReg (FXAS21002C_H_CTRL_REG0) & 0x3f) | lpf << 6);
+}
+
+int FXAS21002C::setRate (int rate)
+{
+	switch (rate) {
+		case 25:
+			setRateODR (GODR_25HZ);
+			break;
+		case 50:
+			setRateODR (GODR_50HZ);
+			break;
+		case 100:
+			setRateODR (GODR_100HZ);
+			break;
+		case 200:
+			setRateODR (GODR_200HZ);
+			break;
+		case 400:
+			setRateODR (GODR_400HZ);
+			break;
+		case 800:
+			setRateODR (GODR_800HZ);
+			break;
+		default:
+			return -1;
+	}
+	return 0;
+}
+
+int FXAS21002C::setRangeFSR (GyroFSR fsr)
+{
+	standby ();
+	if (fsr <= 3) {
+		byte test = (readReg (FXAS21002C_H_CTRL_REG0) & 0xFC) | fsr;
+		Serial.print ("set ctrl0 register to: 0x");
+		Serial.println (test, HEX);
+		writeReg (FXAS21002C_H_CTRL_REG0, (readReg (FXAS21002C_H_CTRL_REG0) & 0xFC) | fsr);
+
+		byte test2 = readReg (FXAS21002C_H_CTRL_REG0);
+		Serial.print ("ctrl0 register: 0x");
+		Serial.println (test2, HEX);
+
+		gyroFSR = fsr;
+		return 0;
+	}
+	return -1;
+
+}
+int FXAS21002C::setRange (int range)
+{
+	disableDoubleFSR ();
+	switch (range) {
+		case 250:
+			setRangeFSR (GFS_250DPS);
+			break;
+
+		case 500:
+			setRangeFSR (GFS_500DPS);
+			break;
+
+		case 1000:
+			setRangeFSR (GFS_1000DPS);
+			break;
+
+		// Fall through is desired 
+		case 4000:
+			enableDoubleFSR ();
+		case 2000:
+			setRangeFSR (GFS_2000DPS);
+			break;
+
+		default:
+			return -1;
+	}
+	return 0;
+}
+
+int FXAS21002C::enableDoubleFSR ()
+{
+	standby ();
+	writeReg (FXAS21002C_H_CTRL_REG3, readReg (FXAS21002C_H_CTRL_REG0) | 0x1);
+}
+int FXAS21002C::disableDoubleFSR ()
+{
+	standby ();
+	writeReg (FXAS21002C_H_CTRL_REG3, readReg (FXAS21002C_H_CTRL_REG0) & 0x0);
+}
+
+
 
 // Get accelerometer resolution
 float FXAS21002C::getGres(void)
@@ -153,72 +260,80 @@ float FXAS21002C::getGres(void)
 	}
 }
 
-void FXAS21002C::calibrate(float * gBias)
+void FXAS21002C::calibrate(int samples, int hertz)
 {
-  Serial.println ("Calibrating Gyroscope...");
-  int32_t gyro_bias[3] = {0, 0, 0};
-  uint16_t ii, fcount;
-  int16_t temp[3];
-  
-  // Clear all interrupts by reading the data output and STATUS registers
-  //readGyroData(temp);
-  readReg(FXAS21002C_H_STATUS);
+	Serial.println ("Calibrating Gyroscope...");
+	int32_t gyro_bias[3] = {0, 0, 0};
+	uint16_t ii;
+	int16_t temp[3];
+	
+	// Clear all interrupts by reading the data output and STATUS registers
+	//readGyroData(temp);
+	readReg(FXAS21002C_H_STATUS);
+	
+	//init ();
+	
+	standby();  // Must be in standby to change registers
+	
+	//writeReg(FXAS21002C_H_CTRL_REG1, 0x08);   // select 50 Hz ODR
+	//writeReg(FXAS21002C_H_CTRL_REG0, 0x03);   // select 200 deg/s full scale
+	//float gyrosensitivity = 32000.0/250.0; //GFS_250DPS;
+	
+	active();  // Set to active to start collecting data
+	unsigned long microsPerReading = 1000000 / hertz;
+	unsigned long microsPrevious = micros ();
+	
+	uint8_t rawData[6];  // x/y/z FIFO accel data stored here
+	for(ii = 0; ii < samples; ii++)   // construct count sums for each axis
+	{
+		unsigned long microsNow;
 
-  //init ();
-  
-  standby();  // Must be in standby to change registers
+  		// check if it's time to read data and update the filter
+  		microsNow = micros();
 
-  writeReg(FXAS21002C_H_CTRL_REG1, 0x08);   // select 50 Hz ODR
-  fcount = 50;                                     // sample for 1 second
-  writeReg(FXAS21002C_H_CTRL_REG0, 0x03);   // select 200 deg/s full scale
-  float gyrosensitivity = 32000.0/250.0; //GFS_250DPS;
+		while (microsNow - microsPrevious < microsPerReading) {
+			microsNow = micros ();	
+		}
+  		
 
-  active();  // Set to active to start collecting data
-   
-  uint8_t rawData[6];  // x/y/z FIFO accel data stored here
-  for(ii = 0; ii < fcount; ii++)   // construct count sums for each axis
-  {
-	 readRegs(FXAS21002C_H_OUT_X_MSB, 6, &rawData[0]);  // Read the FIFO data registers into data array
- 	 temp[0] = ((int16_t)( ((int16_t) rawData[0]) << 8 | ((int16_t) rawData[1])));
- 	 temp[1] = ((int16_t)( ((int16_t) rawData[2]) << 8 | ((int16_t) rawData[3])));
- 	 temp[2] = ((int16_t)( ((int16_t) rawData[4]) << 8 | ((int16_t) rawData[5])));
-
- 	// temp[0] = ((int16_t)( rawData[0] << 8 | rawData[1])) >> 2;
- 	// temp[1] = ((int16_t)( rawData[2] << 8 | rawData[3])) >> 2;
- 	// temp[2] = ((int16_t)( rawData[4] << 8 | rawData[5])) >> 2;
- 	 
- 	 gyro_bias[0] += (int32_t) temp[0];
- 	 gyro_bias[1] += (int32_t) temp[1];
- 	 gyro_bias[2] += (int32_t) temp[2];
- 	 
- 	 delay(25); // wait for next data sample at 50 Hz rate
-  }
- 
-  gyro_bias[0] /= (int32_t) fcount; // get average values
-  gyro_bias[1] /= (int32_t) fcount;
-  gyro_bias[2] /= (int32_t) fcount;
-  
-  gBias[0] = (float)gyro_bias[0]/gyrosensitivity; // get average values
-  gBias[1] = (float)gyro_bias[1]/gyrosensitivity; // get average values
-  gBias[2] = (float)gyro_bias[2]/gyrosensitivity; // get average values
-
-  Serial.print ("gyro bias:");
-  Serial.print (gBias[0]);
-  Serial.print (",");
-  Serial.print (gBias[1]);
-  Serial.print (",");
-  Serial.println (gBias[2]);
+		readRegs(FXAS21002C_H_OUT_X_MSB, 6, &rawData[0]);  // Read the FIFO data registers into data array
+		temp[0] = ((int16_t)( ((int16_t) rawData[0]) << 8 | ((int16_t) rawData[1])));
+		temp[1] = ((int16_t)( ((int16_t) rawData[2]) << 8 | ((int16_t) rawData[3])));
+		temp[2] = ((int16_t)( ((int16_t) rawData[4]) << 8 | ((int16_t) rawData[5])));
+		
+		gyro_bias[0] += (int32_t) temp[0];
+		gyro_bias[1] += (int32_t) temp[1];
+		gyro_bias[2] += (int32_t) temp[2];
 
 
-  ready();  // Set to ready
+		microsPrevious = microsPrevious + microsPerReading;
+	}
+	
+	gyro_bias[0] /= (int32_t) samples; // get average values
+	gyro_bias[1] /= (int32_t) samples;
+	gyro_bias[2] /= (int32_t) samples;
+	
+	gBias[0] = (float)gyro_bias[0] * getGres (); ///gyrosensitivity; // get average values
+	gBias[1] = (float)gyro_bias[1] * getGres ();///gyrosensitivity; // get average values
+	gBias[2] = (float)gyro_bias[2] * getGres ();///gyrosensitivity; // get average values
+	
+	Serial.print ("gyro bias:");
+	Serial.print (gBias[0]);
+	Serial.print (",");
+	Serial.print (gBias[1]);
+	Serial.print (",");
+	Serial.println (gBias[2]);
+	
+	
+	ready();  // Set to ready
 }
 
 void FXAS21002C::reset() 
 {
-	writeReg(FXAS21002C_H_CTRL_REG1, 0x20); // set reset bit to 1 to assert software reset to zero at end of boot process
+	writeReg(FXAS21002C_H_CTRL_REG1, 0x40); // set reset bit to 1 to assert software reset to zero at end of boot process
 	delay(100);
-while(!(readReg(FXAS21002C_H_INT_SRC_FLAG) & 0x08))  { // wait for boot end flag to be set
-}
+	while(!(readReg(FXAS21002C_H_INT_SRC_FLAG) & 0x08))  { // wait for boot end flag to be set
+	}
 
 }
 // Private Methods //////////////////////////////////////////////////////////////

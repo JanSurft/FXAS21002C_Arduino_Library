@@ -77,7 +77,8 @@ flags = [
 '-isystem','/home/jan/.arduino15/packages/UDOO/hardware/solox/1.6.7/libraries/Wire/',
 '-isystem','/home/jan/.arduino15/packages/arduino/tools/avr-gcc/4.9.2-atmel3.5.4-arduino2/avr/include/',
 '-isystem','/home/jan/.arduino15/packages/UDOO/hardware/solox/1.6.7/libraries/AccMag_neo',
-'-isystem','/home/jan/.arduino15/packages/UDOO/hardware/solox/1.6.7/libraries/Gyro_neo'
+'-isystem','/home/jan/.arduino15/packages/UDOO/hardware/solox/1.6.7/libraries/Gyro_neo',
+'-isystem','/home/jan/.arduino15/packages/UDOO/hardware/solox/1.6.7/variants/udooneo/'
 ]
 
 

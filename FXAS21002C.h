@@ -39,18 +39,23 @@
 #define FXAS21002C_H_CTRL_REG2        0x14
 #define FXAS21002C_H_CTRL_REG3        0x15
 
+enum GyroLPF {
+	GLPS_HIGH=0,
+	GLPS_MID=1,
+	GLPS_LOW=2	
+};
+
 enum GyroODR {
 	GODR_800HZ = 0, // 200 Hz
 	GODR_400HZ,
 	GODR_200HZ,
 	GODR_100HZ,
 	GODR_50HZ,
-	GODR_12_5HZ, // 12.5 Hz, etc.
-	GODR_6_25HZ,
-	GODR_1_56HZ
+	GODR_25HZ, // 12.5 Hz, etc.
+	GODR_12_5HZ
 };
 // Set initial input parameters
-enum eGyroFSR {
+enum GyroFSR {
   GFS_2000DPS = 0,
   GFS_1000DPS,
   GFS_500DPS,
@@ -97,8 +102,18 @@ class FXAS21002C
 	// Resolution
 	float getGres(void);
 
+	int setLowPassLPF (GyroLPF lpf);
+	int setRateODR (GyroODR odr);
+	int setRate (int rate);
+	
+	int setRangeFSR (GyroFSR fsr);
+	int setRange (int range);
+
+	int enableDoubleFSR ();
+	int disableDoubleFSR ();
+
 	//Calibrate
-	void calibrate(float * gBias);
+	void calibrate(int samples, int hertz);
 
 	//Reset
 	void reset(void);
